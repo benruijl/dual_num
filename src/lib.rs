@@ -27,6 +27,7 @@ extern crate num_traits;
 
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use std::iter::{Product, Sum};
 use std::num::FpCategory;
 use std::ops::{Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 
@@ -273,7 +274,6 @@ impl<T: Scalar + Num> Add<T> for Dual<T> {
 }
 
 impl<T: Scalar + Num> AddAssign<T> for Dual<T> {
-
     #[inline]
     fn add_assign(&mut self, rhs: T) {
         *self = (*self) + Dual::from_real(rhs)
@@ -503,11 +503,7 @@ where
     }
 }
 
-impl<T: Scalar + Unsigned> Unsigned for Dual<T>
-where
-    Self: Num,
-{
-}
+impl<T: Scalar + Unsigned> Unsigned for Dual<T> where Self: Num {}
 
 impl<T: Scalar + Num + Zero> Zero for Dual<T> {
     #[inline]
@@ -608,6 +604,18 @@ macro_rules! impl_real_op {
         $(
             fn $op(self) -> Self { Dual::new(self.real().$op(), T::zero()) }
         )*
+    }
+}
+
+impl<T: Scalar + Num + Zero> Sum for Dual<T> {
+    fn sum<I: Iterator<Item = Dual<T>>>(iter: I) -> Dual<T> {
+        iter.fold(Dual::zero(), |a, b| a + b)
+    }
+}
+
+impl<T: Scalar + Num + One> Product for Dual<T> {
+    fn product<I: Iterator<Item = Dual<T>>>(iter: I) -> Dual<T> {
+        iter.fold(Dual::one(), |a, b| a * b)
     }
 }
 
@@ -764,7 +772,7 @@ where
     fn sin(self) -> Self {
         Dual::new(self.real().sin(), self.dual() * self.real().cos())
     }
-    
+
     #[inline]
     fn cos(self) -> Self {
         Dual::new(self.real().cos(), self.dual().neg() * self.real().sin())
@@ -814,7 +822,7 @@ where
     fn exp_m1(self) -> Self {
         Dual::new(self.real().exp_m1(), self.dual() * self.real().exp())
     }
-    
+
     #[inline]
     fn ln_1p(self) -> Self {
         Dual::new(self.real().ln_1p(), self.dual() / (self.real() + T::one()))
