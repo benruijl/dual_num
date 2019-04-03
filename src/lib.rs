@@ -678,7 +678,7 @@ where
 
     #[inline]
     fn is_zero(&self) -> bool {
-        self.iter().all(|x| x.is_zero())
+        self.real().is_zero()
     }
 }
 
