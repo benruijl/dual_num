@@ -29,7 +29,7 @@ use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::iter::{Product, Sum};
 use std::num::FpCategory;
-use std::ops::{Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Deref, DerefMut, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign};
 
 pub use num_traits::{Float, FloatConst, Num, One, Zero};
 
@@ -452,6 +452,19 @@ where
     }
 }
 
+impl<T: Scalar + Num, N: Dim + DimName> Add<&Self> for DualN<T, N>
+where
+    DefaultAllocator: Allocator<T, N>,
+    Owned<T, N>: Copy,
+{
+    type Output = Self;
+
+    #[inline]
+    fn add(self, rhs: &Self) -> Self {
+        DualN(self.zip_map(&rhs, |x, y| x + y))
+    }
+}
+
 impl<T: Scalar + Num, N: Dim + DimName> AddAssign<Self> for DualN<T, N>
 where
     DefaultAllocator: Allocator<T, N>,
@@ -476,6 +489,19 @@ where
     }
 }
 
+impl<T: Scalar + Num, N: Dim + DimName> Sub<&Self> for DualN<T, N>
+where
+    DefaultAllocator: Allocator<T, N>,
+    Owned<T, N>: Copy,
+{
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, rhs: &Self) -> Self {
+        DualN(self.zip_map(&rhs, |x, y| x - y))
+    }
+}
+
 impl<T: Scalar + Num, N: Dim + DimName> SubAssign<Self> for DualN<T, N>
 where
     DefaultAllocator: Allocator<T, N>,
@@ -484,6 +510,22 @@ where
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = (*self) - rhs
+    }
+}
+
+impl<T: Scalar + Num, N: Dim + DimName> Mul<&Self> for DualN<T, N>
+where
+    DefaultAllocator: Allocator<T, N>,
+    Owned<T, N>: Copy,
+{
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, rhs: &Self) -> Self {
+        // TODO: skip real part
+        let mut v = self.zip_map(&rhs, |x, y| rhs.real() * x + self.real() * y);
+        v[0] = self.real() * rhs.real();
+        DualN(v)
     }
 }
 
@@ -496,10 +538,7 @@ where
 
     #[inline]
     fn mul(self, rhs: Self) -> Self {
-        // TODO: skip real part
-        let mut v = self.zip_map(&rhs, |x, y| rhs.real() * x + self.real() * y);
-        v[0] = self.real() * rhs.real();
-        DualN(v)
+        self * (&rhs)
     }
 }
 
@@ -547,6 +586,25 @@ impl_mul_add! {
     <T, T>
 }
 
+impl<T: Scalar + Num, N: Dim + DimName> Div<&Self> for DualN<T, N>
+where
+    DefaultAllocator: Allocator<T, N>,
+    Owned<T, N>: Copy,
+{
+    type Output = Self;
+
+    #[inline]
+    fn div(self, rhs: &Self) -> Self {
+        // TODO: specialize with inv so we can precompute the inverse
+        let d = rhs.real() * rhs.real();
+
+        // TODO: skip real part
+        let mut v = self.zip_map(&rhs, |x, y| (rhs.real() * x - self.real() * y) / d);
+        v[0] = self.real() / rhs.real();
+        DualN(v)
+    }
+}
+
 impl<T: Scalar + Num, N: Dim + DimName> Div<Self> for DualN<T, N>
 where
     DefaultAllocator: Allocator<T, N>,
@@ -556,13 +614,7 @@ where
 
     #[inline]
     fn div(self, rhs: Self) -> Self {
-        // TODO: specialize with inv so we can precompute the inverse
-        let d = rhs.real() * rhs.real();
-
-        // TODO: skip real part
-        let mut v = self.zip_map(&rhs, |x, y| (rhs.real() * x - self.real() * y) / d);
-        v[0] = self.real() / rhs.real();
-        DualN(v)
+        self / (&rhs)
     }
 }
 
@@ -589,6 +641,36 @@ where
     /// As far as I know, remainder is not a valid operation on dual numbers,
     /// but is required for the `Float` trait to be implemented.
     fn rem(self, _: Self) -> Self {
+        unimplemented!()
+    }
+}
+
+impl<T: Scalar + Num, N: Dim + DimName> Rem<&Self> for DualN<T, N>
+where
+    DefaultAllocator: Allocator<T, N>,
+    Owned<T, N>: Copy,
+{
+    type Output = Self;
+
+    /// **UNIMPLEMENTED!!!**
+    ///
+    /// As far as I know, remainder is not a valid operation on dual numbers,
+    /// but is required for the `Float` trait to be implemented.
+    fn rem(self, _: &Self) -> Self {
+        unimplemented!()
+    }
+}
+
+impl<T: Scalar + Num, N: Dim + DimName> RemAssign<Self> for DualN<T, N>
+where
+    DefaultAllocator: Allocator<T, N>,
+    Owned<T, N>: Copy,
+{
+    /// **UNIMPLEMENTED!!!**
+    ///
+    /// As far as I know, remainder is not a valid operation on dual numbers,
+    /// but is required for the `Float` trait to be implemented.
+    fn rem_assign(&mut self, _: Self) {
         unimplemented!()
     }
 }
